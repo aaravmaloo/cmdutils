@@ -3,6 +3,11 @@ name: Winget Release
 on:
   release:
     types: [published]
+  workflow_run:
+    workflows:
+      - Release
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       version:
@@ -11,6 +16,7 @@ on:
 
 jobs:
   submit:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'release' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
 
     steps:
@@ -51,7 +57,12 @@ jobs:
           URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
           echo "==> Downloading ${URL}..."
-          curl -L -s "$URL" -o win64.zip
+          if ! curl -fSL -s "$URL" -o win64.zip; then
+            echo "Primary URL failed, attempting fallback URL format..."
+            ZIP_NAME="cmdutils-v${VERSION}-windows_x64.zip"
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
+            curl -fSL -s "$URL" -o win64.zip
+          fi
 
           SHA=$(sha256sum win64.zip | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
@@ -73,7 +84,12 @@ jobs:
           URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
           echo "==> Downloading ${URL}..."
-          curl -L -s "$URL" -o winArm64.zip
+          if ! curl -fSL -s "$URL" -o winArm64.zip; then
+            echo "Primary URL failed, attempting fallback URL format..."
+            ZIP_NAME="cmdutils-v${VERSION}-windows_arm64.zip"
+            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
+            curl -fSL -s "$URL" -o winArm64.zip
+          fi
 
           SHA=$(sha256sum winArm64.zip | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"

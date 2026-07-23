@@ -74,7 +74,7 @@ jobs:
             aarch64-pc-windows-msvc)    OS_ARCH="windows_arm64" ;;
           esac
 
-          PKG_DIR="cmdutils-v${VERSION}-${OS_ARCH}"
+          PKG_DIR="cmdutils-${TAG}-${OS_ARCH}"
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             ARCHIVE="${PKG_DIR}.zip"
           else
