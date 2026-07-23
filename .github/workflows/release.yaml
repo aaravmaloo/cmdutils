@@ -61,8 +61,20 @@ jobs:
           EXT="${{ matrix.os == 'windows-latest' && '.exe' || '' }}"
           BIN="cmdutils${EXT}"
           SRC="target/${{ matrix.target }}/release/${BIN}"
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
 
-          PKG_DIR="cmdutils-${{ github.ref_name }}-${{ matrix.target }}"
+          # Map target triple to clean os_arch name
+          case "${{ matrix.target }}" in
+            x86_64-unknown-linux-gnu)   OS_ARCH="linux_x64" ;;
+            aarch64-unknown-linux-gnu)  OS_ARCH="linux_arm64" ;;
+            x86_64-apple-darwin)        OS_ARCH="macos_x64" ;;
+            aarch64-apple-darwin)       OS_ARCH="macos_arm64" ;;
+            x86_64-pc-windows-msvc)     OS_ARCH="windows_x64" ;;
+            aarch64-pc-windows-msvc)    OS_ARCH="windows_arm64" ;;
+          esac
+
+          PKG_DIR="cmdutils-v${VERSION}-${OS_ARCH}"
           if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             ARCHIVE="${PKG_DIR}.zip"
           else
@@ -106,7 +118,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          name: cmdutils ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
           fail_on_unmatched_files: true
           files: artifacts/*/*
           generate_release_notes: true

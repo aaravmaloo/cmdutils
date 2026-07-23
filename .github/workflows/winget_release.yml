@@ -47,7 +47,7 @@ jobs:
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP_NAME="cmdutils-${TAG}-x86_64-pc-windows-msvc.zip"
+          ZIP_NAME="cmdutils-${TAG}-windows_x64.zip"
           URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
           echo "==> Downloading ${URL}..."
@@ -69,7 +69,7 @@ jobs:
         run: |
           TAG="${{ steps.version.outputs.tag }}"
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP_NAME="cmdutils-${TAG}-aarch64-pc-windows-msvc.zip"
+          ZIP_NAME="cmdutils-${TAG}-windows_arm64.zip"
           URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
           echo "==> Downloading ${URL}..."
@@ -158,7 +158,14 @@ jobs:
           echo "==> Manifests created in ${RELDIR}"
 
       - name: Submit to winget-pkgs
-        uses: microsoft/winget-create@v1
-        with:
-          manifest-path: ${{ steps.manifest.outputs.path }}
-          token: ${{ secrets.PAT_TOKEN }}
+        shell: bash
+        env:
+          WINGET_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          # Install wingetcreate CLI tool (.NET SDK is pre-installed on ubuntu-latest)
+          dotnet tool install --global wingetcreate
+
+          # Submit the manifests (this forks winget-pkgs and opens a PR)
+          wingetcreate submit \
+            --manifest-path "${{ steps.manifest.outputs.path }}" \
+            --token "$WINGET_TOKEN"
