@@ -67,7 +67,7 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
 
     let new_size = std::fs::metadata(&output_path)?.len();
     let pct = if original_size > 0 {
-        ((original_size as f64 - new_size as f64) / original_size as f64 * 100.0)
+        (original_size as f64 - new_size as f64) / original_size as f64 * 100.0
     } else {
         0.0
     };

@@ -69,7 +69,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
             }
         };
 
-        if quality < 1 || quality > 100 {
+        if !(1..=100).contains(&quality) {
             return Err(format!("Quality must be between 1 and 100, got {quality}").into());
         }
 
@@ -87,11 +87,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     let new_size = std::fs::metadata(&output_path)?.len();
     // Show percentage if known
     if original_size > 0 {
-        let diff = if original_size > new_size {
-            original_size - new_size
-        } else {
-            new_size - original_size
-        };
+        let diff = original_size.abs_diff(new_size);
         let pct = diff as f64 / original_size as f64 * 100.0;
         let direction = if new_size < original_size { "saved" } else { "grew" };
         println!(

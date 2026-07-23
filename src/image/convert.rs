@@ -83,7 +83,7 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
 
     let new_size = std::fs::metadata(&output_path)?.len();
     let pct = if original_size > 0 {
-        ((original_size as f64 - new_size as f64) / original_size as f64 * 100.0)
+        (original_size as f64 - new_size as f64) / original_size as f64 * 100.0
     } else {
         0.0
     };
