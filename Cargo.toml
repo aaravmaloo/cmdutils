@@ -1,0 +1,12 @@
+[package]
+name = "cmdutils"
+version = "0.0.1"
+edition = "2021"
+author = "Aarav Maloo"
+[dependencies]
+clap = { version = "4", features = ["derive"] }
+image = "0.25"
+oxipng = { version = "9", default-features = false, features = ["zopfli", "parallel"] }
+
+[dev-dependencies]
+tempfile = "3"
