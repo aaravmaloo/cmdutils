@@ -52,7 +52,12 @@ jobs:
           SRC="target/${{ matrix.target }}/release/${BIN}"
 
           PKG_DIR="cmdutils-${{ github.ref_name }}-${{ matrix.target }}"
-          ARCHIVE="${PKG_DIR}.${{ matrix.target == 'x86_64-pc-windows-msvc' && 'zip' || 'tar.gz' }}"
+          IS_WIN="${{ matrix.target == 'x86_64-pc-windows-msvc' }}"
+          if [ "$IS_WIN" = "true" ]; then
+            ARCHIVE="${PKG_DIR}.zip"
+          else
+            ARCHIVE="${PKG_DIR}.tar.gz"
+          fi
 
           mkdir -p "${PKG_DIR}"
           cp "${SRC}" "${PKG_DIR}/${BIN}"
