@@ -56,7 +56,7 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
 
           # Fetch download URL for x64 windows zip using gh CLI
-          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url | select(test("win(dows)?_?x64\\.zip$|x86_64-pc-windows-msvc\\.zip$"))' | head -n 1)
+          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '[.assets[].url | select(test("win(dows)?_?x64\\.zip$|x86_64-pc-windows-msvc\\.zip$"))][0] // empty')
 
           if [ -z "$URL" ]; then
             echo "Error: Could not find x64 Windows asset for release $TAG"
@@ -86,7 +86,7 @@ jobs:
           TAG="${{ steps.version.outputs.tag }}"
 
           # Fetch download URL for arm64 windows zip using gh CLI
-          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url | select(test("win(dows)?_?arm64\\.zip$|aarch64-pc-windows-msvc\\.zip$"))' | head -n 1)
+          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '[.assets[].url | select(test("win(dows)?_?arm64\\.zip$|aarch64-pc-windows-msvc\\.zip$"))][0] // empty')
 
           if [ -z "$URL" ]; then
             echo "Error: Could not find ARM64 Windows asset for release $TAG"
