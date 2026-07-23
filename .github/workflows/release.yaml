@@ -19,12 +19,16 @@ jobs:
         include:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-          - os: macos-13
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+          - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
             target: aarch64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
 
@@ -41,6 +45,13 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
+      - name: Install cross-compilation dependencies (Linux ARM64)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
       - name: Build release
         run: cargo build --release --target ${{ matrix.target }} --locked
 
@@ -52,8 +63,7 @@ jobs:
           SRC="target/${{ matrix.target }}/release/${BIN}"
 
           PKG_DIR="cmdutils-${{ github.ref_name }}-${{ matrix.target }}"
-          IS_WIN="${{ matrix.target == 'x86_64-pc-windows-msvc' }}"
-          if [ "$IS_WIN" = "true" ]; then
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             ARCHIVE="${PKG_DIR}.zip"
           else
             ARCHIVE="${PKG_DIR}.tar.gz"
@@ -62,7 +72,7 @@ jobs:
           mkdir -p "${PKG_DIR}"
           cp "${SRC}" "${PKG_DIR}/${BIN}"
 
-          if [[ "${{ matrix.target }}" == "x86_64-pc-windows-msvc" ]]; then
+          if [[ "${{ matrix.target }}" == *"windows"* ]]; then
             7z a "${ARCHIVE}" "${PKG_DIR}"
           else
             tar czf "${ARCHIVE}" "${PKG_DIR}"
