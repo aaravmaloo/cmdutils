@@ -2,7 +2,7 @@
 name = "cmdutils"
 version = "0.0.1"
 edition = "2021"
-author = "Aarav Maloo"
+authors = ["Aarav Maloo"]
 [dependencies]
 clap = { version = "4", features = ["derive"] }
 image = "0.25"

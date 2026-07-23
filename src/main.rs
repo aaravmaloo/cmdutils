@@ -5,7 +5,9 @@ use cmdutils::image;
 #[derive(Parser)]
 #[command(name = "cmdutils")]
 #[command(about = "Cross-platform CLI utilities for everyday tasks")]
-#[command(long_about = "cmdutils — a collection of cross-platform CLI utilities.\n\nExamples:\n  cmdutils image convert photo.png jpg       Convert PNG to JPEG\n  cmdutils image resize photo.png 800x600    Resize image to 800x600\n  cmdutils image compress photo.jpg 80       Compress JPEG with quality 80")]
+#[command(
+    long_about = "cmdutils — a collection of cross-platform CLI utilities.\n\nExamples:\n  cmdutils image convert photo.png jpg       Convert PNG to JPEG\n  cmdutils image resize photo.png 800x600    Resize image to 800x600\n  cmdutils image compress photo.jpg 80       Compress JPEG with quality 80"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,

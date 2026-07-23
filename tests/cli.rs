@@ -85,7 +85,10 @@ fn test_convert_same_format_error() {
 fn test_convert_invalid_input() {
     let err = cmdutils::image::convert("/nonexistent/image.png", "jpg").unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("not found"), "should report missing file: {msg}");
+    assert!(
+        msg.contains("not found"),
+        "should report missing file: {msg}"
+    );
 }
 
 #[test]
@@ -93,7 +96,10 @@ fn test_convert_unsupported_format() {
     let png = test_png_path();
     let err = cmdutils::image::convert(&png, "gif").unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("Unsupported output"), "should reject unsupported format: {msg}");
+    assert!(
+        msg.contains("Unsupported output"),
+        "should reject unsupported format: {msg}"
+    );
 }
 
 #[test]
@@ -152,7 +158,10 @@ fn test_resize_invalid_dimensions_format() {
     let png = test_png_path();
     let err = cmdutils::image::resize(&png, "abc").unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("Invalid dimensions"), "should reject bad format: {msg}");
+    assert!(
+        msg.contains("Invalid dimensions"),
+        "should reject bad format: {msg}"
+    );
 }
 
 #[test]
@@ -160,7 +169,10 @@ fn test_resize_invalid_width() {
     let png = test_png_path();
     let err = cmdutils::image::resize(&png, "abcx100").unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("Invalid width"), "should reject bad width: {msg}");
+    assert!(
+        msg.contains("Invalid width"),
+        "should reject bad width: {msg}"
+    );
 }
 
 #[test]
@@ -168,7 +180,10 @@ fn test_resize_invalid_height() {
     let png = test_png_path();
     let err = cmdutils::image::resize(&png, "100xabc").unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("Invalid height"), "should reject bad height: {msg}");
+    assert!(
+        msg.contains("Invalid height"),
+        "should reject bad height: {msg}"
+    );
 }
 
 #[test]
@@ -240,7 +255,10 @@ fn test_compress_invalid_quality_not_a_number() {
     let jpg = test_jpg_path();
     let err = cmdutils::image::compress(&jpg, Some("abc")).unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("Invalid quality"), "should reject non-numeric: {msg}");
+    assert!(
+        msg.contains("Invalid quality"),
+        "should reject non-numeric: {msg}"
+    );
 }
 
 #[test]
@@ -248,7 +266,10 @@ fn test_compress_quality_too_low() {
     let jpg = test_jpg_path();
     let err = cmdutils::image::compress(&jpg, Some("0")).unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("must be between"), "should reject out of range: {msg}");
+    assert!(
+        msg.contains("must be between"),
+        "should reject out of range: {msg}"
+    );
 }
 
 #[test]
@@ -256,7 +277,10 @@ fn test_compress_quality_too_high() {
     let jpg = test_jpg_path();
     let err = cmdutils::image::compress(&jpg, Some("101")).unwrap_err();
     let msg = format!("{err}");
-    assert!(msg.contains("must be between"), "should reject out of range: {msg}");
+    assert!(
+        msg.contains("must be between"),
+        "should reject out of range: {msg}"
+    );
 }
 
 #[test]
@@ -371,7 +395,10 @@ fn test_cli_image_compress_png() {
         .output()
         .expect("failed to run cmdutils image compress png");
 
-    assert!(output.status.success(), "CLI should succeed for PNG compress");
+    assert!(
+        output.status.success(),
+        "CLI should succeed for PNG compress"
+    );
 
     let result = tmp.path().join("test_compressed.png");
     assert!(result.exists(), "compressed output should exist");
@@ -387,9 +414,15 @@ fn test_cli_image_missing_args_errors() {
         .output()
         .expect("failed to run cmdutils image with no args");
 
-    assert!(!output.status.success(), "CLI should fail with missing subcommand");
+    assert!(
+        !output.status.success(),
+        "CLI should fail with missing subcommand"
+    );
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("required") || stderr.contains("subcommand"), "should mention required args: {stderr}");
+    assert!(
+        stderr.contains("required") || stderr.contains("subcommand"),
+        "should mention required args: {stderr}"
+    );
 }
 
 #[test]
@@ -402,9 +435,15 @@ fn test_cli_image_bad_dimensions_errors() {
         .output()
         .expect("failed to run cmdutils image resize with bad dimensions");
 
-    assert!(!output.status.success(), "CLI should fail with bad dimensions");
+    assert!(
+        !output.status.success(),
+        "CLI should fail with bad dimensions"
+    );
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("Invalid"), "should mention invalid: {stderr}");
+    assert!(
+        stderr.contains("Invalid"),
+        "should mention invalid: {stderr}"
+    );
 }
 
 #[test]
@@ -419,7 +458,10 @@ fn test_cli_image_bad_quality_errors() {
 
     assert!(!output.status.success(), "CLI should fail with bad quality");
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("Invalid quality"), "should mention invalid quality: {stderr}");
+    assert!(
+        stderr.contains("Invalid quality"),
+        "should mention invalid quality: {stderr}"
+    );
 }
 
 #[test]
@@ -431,9 +473,15 @@ fn test_cli_image_nonexistent_file_errors() {
         .output()
         .expect("failed to run cmdutils image convert with missing file");
 
-    assert!(!output.status.success(), "CLI should fail with missing file");
+    assert!(
+        !output.status.success(),
+        "CLI should fail with missing file"
+    );
     let stderr = String::from_utf8_lossy(&output.stderr);
-    assert!(stderr.contains("not found"), "should mention not found: {stderr}");
+    assert!(
+        stderr.contains("not found"),
+        "should mention not found: {stderr}"
+    );
 }
 
 #[test]
@@ -460,6 +508,9 @@ fn test_cli_image_help_succeeds() {
     assert!(output.status.success(), "image --help should succeed");
     let stdout = String::from_utf8_lossy(&output.stdout);
     assert!(stdout.contains("convert"), "image help should list convert");
-    assert!(stdout.contains("compress"), "image help should list compress");
+    assert!(
+        stdout.contains("compress"),
+        "image help should list compress"
+    );
     assert!(stdout.contains("resize"), "image help should list resize");
 }

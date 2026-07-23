@@ -1,8 +1,8 @@
-use std::path::Path;
 use std::ffi::OsStr;
 use std::fs::File;
+use std::path::Path;
 
-use oxipng::{InFile, OutFile, Options as PngOptions};
+use oxipng::{InFile, Options as PngOptions, OutFile};
 
 pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -19,7 +19,9 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
 
     let is_png = input_ext == "png";
     if !is_png && !matches!(input_ext.as_str(), "jpg" | "jpeg") {
-        return Err(format!("Unsupported format: '.{input_ext}'. Supported: png, jpg, jpeg").into());
+        return Err(
+            format!("Unsupported format: '.{input_ext}'. Supported: png, jpg, jpeg").into(),
+        );
     }
 
     let original_size = std::fs::metadata(input_path)?.len();
@@ -29,7 +31,11 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
         .file_stem()
         .and_then(OsStr::to_str)
         .unwrap_or("output");
-    let ext = if input_ext == "jpeg" { "jpg" } else { &input_ext };
+    let ext = if input_ext == "jpeg" {
+        "jpg"
+    } else {
+        &input_ext
+    };
     let output_path = input_path.with_file_name(format!("{}_compressed.{ext}", stem));
 
     if is_png {
@@ -57,15 +63,13 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     } else {
         // JPEG: quality is required
         let quality: u8 = match quality_str {
-            Some(q) => q.parse().map_err(|_| {
-                format!("Invalid quality value: '{q}'. Must be a number 1-100")
-            })?,
+            Some(q) => q
+                .parse()
+                .map_err(|_| format!("Invalid quality value: '{q}'. Must be a number 1-100"))?,
             None => {
-                return Err(
-                    "JPEG compression requires a quality value 1-100.\n\
+                return Err("JPEG compression requires a quality value 1-100.\n\
                      Use: cmdutils image compress <input.jpg> <quality>"
-                        .into(),
-                );
+                    .into());
             }
         };
 
@@ -89,7 +93,11 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     if original_size > 0 {
         let diff = original_size.abs_diff(new_size);
         let pct = diff as f64 / original_size as f64 * 100.0;
-        let direction = if new_size < original_size { "saved" } else { "grew" };
+        let direction = if new_size < original_size {
+            "saved"
+        } else {
+            "grew"
+        };
         println!(
             "Compressed {} ({}B → {}B, {} {:.1}%): {}",
             if is_png { "PNG" } else { "JPEG" },

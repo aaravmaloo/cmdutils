@@ -1,8 +1,8 @@
-use std::path::Path;
 use std::ffi::OsStr;
 use std::fs::File;
+use std::path::Path;
 
-use oxipng::{InFile, OutFile, Options as PngOptions};
+use oxipng::{InFile, Options as PngOptions, OutFile};
 
 pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -31,10 +31,10 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
         "png" => "PNG",
         "jpg" | "jpeg" => "JPEG",
         _ => {
-            return Err(
-                format!("Unsupported input format: '.{input_ext}'. Supported: png, jpg, jpeg")
-                    .into(),
+            return Err(format!(
+                "Unsupported input format: '.{input_ext}'. Supported: png, jpg, jpeg"
             )
+            .into())
         }
     };
 
@@ -58,8 +58,7 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
         // PNG → JPEG: use high-quality JPEG encoding (quality 90)
         let rgb = img.to_rgb8();
         let mut file = File::create(&output_path)?;
-        let mut encoder =
-            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
         encoder.encode(
             rgb.as_raw(),
             rgb.width(),

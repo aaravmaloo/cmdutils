@@ -1,8 +1,8 @@
-use std::path::Path;
 use std::ffi::OsStr;
 use std::fs::File;
+use std::path::Path;
 
-use oxipng::{InFile, OutFile, Options as PngOptions};
+use oxipng::{InFile, Options as PngOptions, OutFile};
 
 pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -42,8 +42,7 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
         // JPEG output: high-quality encoding (quality 90)
         let rgb = resized.to_rgb8();
         let mut file = File::create(&output_path)?;
-        let mut encoder =
-            image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
+        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
         encoder.encode(
             rgb.as_raw(),
             rgb.width(),

@@ -63,19 +63,27 @@ jobs:
       - name: Test image convert (PNG → JPEG)
         run: |
           set -e
-          ./target/release/cmdutils image /tmp/test_img.png jpg
-          [ -f /tmp/test_img.jpg ] && echo "✅ convert PNG→JPEG"
-          ./target/release/cmdutils image /tmp/test_img.jpg png
-          [ -f /tmp/test_img.png ] && echo "✅ convert JPEG→PNG"
+          cp /tmp/test_img.png /tmp/test_convert_in.png
+          ./target/release/cmdutils image convert /tmp/test_convert_in.png jpg
+          [ -f /tmp/test_convert_in.jpg ] && echo "✅ convert PNG→JPEG"
+
+      - name: Test image convert (JPEG → PNG)
+        run: |
+          set -e
+          cp /tmp/test_img.jpg /tmp/test_convert_in2.jpg
+          ./target/release/cmdutils image convert /tmp/test_convert_in2.jpg png
+          [ -f /tmp/test_convert_in2.png ] && echo "✅ convert JPEG→PNG"
 
       - name: Test resize
         run: |
           set -e
-          ./target/release/cmdutils resize /tmp/test_img.png 50x40
-          [ -f /tmp/test_img_resized.png ] && echo "✅ resize"
+          cp /tmp/test_img.png /tmp/test_resize_in.png
+          ./target/release/cmdutils image resize /tmp/test_resize_in.png 50x40
+          [ -f /tmp/test_resize_in_resized.png ] && echo "✅ resize"
 
       - name: Test compress
         run: |
           set -e
-          ./target/release/cmdutils compress /tmp/test_img.jpg 50
-          [ -f /tmp/test_img_compressed.jpg ] && echo "✅ compress JPEG"
+          cp /tmp/test_img.jpg /tmp/test_compress_in.jpg
+          ./target/release/cmdutils image compress /tmp/test_compress_in.jpg 50
+          [ -f /tmp/test_compress_in_compressed.jpg ] && echo "✅ compress JPEG"
