@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-and-test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --verbose
+
+      - name: Run tests
+        run: cargo test --verbose
+
+      - name: Lint (clippy)
+        run: cargo clippy -- -D warnings
+
+      - name: Check formatting
+        run: cargo fmt --check
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Generate test images
+        run: |
+          # Create a small PNG using ImageMagick (available on ubuntu-latest)
+          convert -size 100x80 xc:'rgba(50,100,200,1.0)' -fill white \
+            -draw 'rectangle 10,10 90,70' /tmp/test_img.png
+          # Create a JPEG copy
+          convert /tmp/test_img.png /tmp/test_img.jpg
+
+      - name: Test image convert (PNG → JPEG)
+        run: |
+          set -e
+          ./target/release/cmdutils image /tmp/test_img.png jpg
+          [ -f /tmp/test_img.jpg ] && echo "✅ convert PNG→JPEG"
+          ./target/release/cmdutils image /tmp/test_img.jpg png
+          [ -f /tmp/test_img.png ] && echo "✅ convert JPEG→PNG"
+
+      - name: Test resize
+        run: |
+          set -e
+          ./target/release/cmdutils resize /tmp/test_img.png 50x40
+          [ -f /tmp/test_img_resized.png ] && echo "✅ resize"
+
+      - name: Test compress
+        run: |
+          set -e
+          ./target/release/cmdutils compress /tmp/test_img.jpg 50
+          [ -f /tmp/test_img_compressed.jpg ] && echo "✅ compress JPEG"
