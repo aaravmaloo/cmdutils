@@ -50,19 +50,22 @@ jobs:
       - name: Download x64 Windows installer
         id: win64
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          ZIP_NAME="cmdutils-${TAG}-windows_x64.zip"
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
-          echo "==> Downloading ${URL}..."
-          if ! curl -fSL -s "$URL" -o win64.zip; then
-            echo "Primary URL failed, attempting fallback URL format..."
-            ZIP_NAME="cmdutils-v${VERSION}-windows_x64.zip"
-            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
-            curl -fSL -s "$URL" -o win64.zip
+          # Fetch download URL for x64 windows zip using gh CLI
+          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url | select(test("win(dows)?_?x64\\.zip$|x86_64-pc-windows-msvc\\.zip$"))' | head -n 1)
+
+          if [ -z "$URL" ]; then
+            echo "Error: Could not find x64 Windows asset for release $TAG"
+            gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url'
+            exit 1
           fi
+
+          echo "==> Downloading x64 archive from ${URL}..."
+          curl -fSL -s "$URL" -o win64.zip
 
           SHA=$(sha256sum win64.zip | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
@@ -77,19 +80,22 @@ jobs:
       - name: Download ARM64 Windows installer
         id: winArm64
         shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.PAT_TOKEN || github.token }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          VERSION="${{ steps.version.outputs.version }}"
-          ZIP_NAME="cmdutils-${TAG}-windows_arm64.zip"
-          URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
 
-          echo "==> Downloading ${URL}..."
-          if ! curl -fSL -s "$URL" -o winArm64.zip; then
-            echo "Primary URL failed, attempting fallback URL format..."
-            ZIP_NAME="cmdutils-v${VERSION}-windows_arm64.zip"
-            URL="https://github.com/${{ github.repository }}/releases/download/${TAG}/${ZIP_NAME}"
-            curl -fSL -s "$URL" -o winArm64.zip
+          # Fetch download URL for arm64 windows zip using gh CLI
+          URL=$(gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url | select(test("win(dows)?_?arm64\\.zip$|aarch64-pc-windows-msvc\\.zip$"))' | head -n 1)
+
+          if [ -z "$URL" ]; then
+            echo "Error: Could not find ARM64 Windows asset for release $TAG"
+            gh release view "$TAG" --repo "${{ github.repository }}" --json assets --jq '.assets[].url'
+            exit 1
           fi
+
+          echo "==> Downloading ARM64 archive from ${URL}..."
+          curl -fSL -s "$URL" -o winArm64.zip
 
           SHA=$(sha256sum winArm64.zip | awk '{print $1}')
           echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
