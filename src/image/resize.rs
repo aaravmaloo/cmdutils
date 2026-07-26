@@ -1,8 +1,7 @@
 use std::ffi::OsStr;
-use std::fs::File;
 use std::path::Path;
 
-use oxipng::{InFile, Options as PngOptions, OutFile};
+use crate::image::helpers;
 
 pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -23,46 +22,42 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
         .parse()
         .map_err(|_| format!("Invalid height: '{height}'"))?;
 
+    let input_ext = input_path
+        .extension()
+        .and_then(OsStr::to_str)
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+
+    // Validate input format
+    if !helpers::is_supported_input(&input_ext) {
+        let supported = helpers::INPUT_FORMATS.join(", ");
+        return Err(format!(
+            "Unsupported format: '.{input_ext}'. Supported: {supported}"
+        )
+        .into());
+    }
+
     let original_size = std::fs::metadata(input_path)?.len();
-    let img = image::open(input_path)?;
+    let img = helpers::load_image(input_path)?;
     let resized = img.resize_exact(width, height, image::imageops::Lanczos3);
 
     let stem = input_path
         .file_stem()
         .and_then(OsStr::to_str)
         .unwrap_or("output");
-    let ext = input_path
-        .extension()
-        .and_then(OsStr::to_str)
-        .unwrap_or("png");
-    let is_jpeg = matches!(ext.to_lowercase().as_str(), "jpg" | "jpeg");
-    let output_path = input_path.with_file_name(format!("{}_resized.{ext}", stem));
 
-    if is_jpeg {
-        // JPEG output: high-quality encoding (quality 90)
-        let rgb = resized.to_rgb8();
-        let mut file = File::create(&output_path)?;
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
-        encoder.encode(
-            rgb.as_raw(),
-            rgb.width(),
-            rgb.height(),
-            image::ExtendedColorType::Rgb8,
-        )?;
-    } else {
-        // PNG output: save then optimize with oxipng
-        resized.save(&output_path)?;
-        let mut opts = PngOptions::max_compression();
-        opts.force = true;
-        oxipng::optimize(
-            &InFile::Path(output_path.clone()),
-            &OutFile::Path {
-                path: Some(output_path.clone()),
-                preserve_attrs: false,
-            },
-            &opts,
-        )?;
-    }
+    // Normalize extension for output
+    let ext = match input_ext.as_str() {
+        "jpeg" => "jpg",
+        "tif" => "tiff",
+        "svg" => "png", // SVG gets rasterized → PNG by default
+        other => other,
+    };
+
+    let output_path = input_path.with_file_name(format!("{stem}_resized.{ext}"));
+
+    // SVG input was already rasterized above; for other formats, save with optimization.
+    helpers::save_with_quality(&resized, &output_path, None)?;
 
     let new_size = std::fs::metadata(&output_path)?.len();
     let pct = if original_size > 0 {
@@ -71,15 +66,14 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
         0.0
     };
 
+    let fmt_name = helpers::format_name(ext);
+
     println!(
-        "Resized {}x{} → {}x{} ({}B → {}B, {:.1}%): {}",
+        "Resized {fmt_name} {}x{} → {width}x{height} ({}B → {}B, {pct:.1}%): {}",
         img.width(),
         img.height(),
-        width,
-        height,
         original_size,
         new_size,
-        pct,
         output_path.display()
     );
 

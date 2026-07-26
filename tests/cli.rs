@@ -24,6 +24,41 @@ fn test_jpg_path() -> String {
     path
 }
 
+fn test_webp_path() -> String {
+    let dir = std::env::temp_dir().join("cmdutils_test_webp.webp");
+    let path = dir.to_str().unwrap().to_string();
+    if !dir.exists() {
+        let img = image::RgbaImage::from_fn(6, 4, |x, y| {
+            image::Rgba([(x * 40) as u8, (y * 60) as u8, 180, 255])
+        });
+        // Use image::codecs::webp::WebPEncoder
+        use image::codecs::webp::WebPEncoder;
+        let file = std::fs::File::create(&dir).unwrap();
+        let encoder = WebPEncoder::new_lossless(file);
+        encoder
+            .encode(
+                img.as_raw(),
+                img.width(),
+                img.height(),
+                image::ExtendedColorType::Rgba8,
+            )
+            .unwrap();
+    }
+    path
+}
+
+fn test_bmp_path() -> String {
+    let dir = std::env::temp_dir().join("cmdutils_test_bmp.bmp");
+    let path = dir.to_str().unwrap().to_string();
+    if !dir.exists() {
+        let img = image::RgbImage::from_fn(5, 5, |x, y| {
+            image::Rgb([(x * 50) as u8, (y * 50) as u8, 100])
+        });
+        img.save(&dir).unwrap();
+    }
+    path
+}
+
 fn binary_path() -> String {
     let mut path = std::env::current_exe().unwrap();
     path.pop();
@@ -74,6 +109,54 @@ fn test_convert_jpg_to_png() {
 }
 
 #[test]
+fn test_convert_png_to_webp() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    cmdutils::image::convert(input.to_str().unwrap(), "webp").unwrap();
+
+    let output = input.with_extension("webp");
+    assert!(output.exists(), "WebP output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 4);
+    assert_eq!(img.height(), 4);
+}
+
+#[test]
+fn test_convert_webp_to_png() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    cmdutils::image::convert(input.to_str().unwrap(), "png").unwrap();
+
+    let output = input.with_extension("png");
+    assert!(output.exists(), "PNG output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 6);
+    assert_eq!(img.height(), 4);
+}
+
+#[test]
+fn test_convert_bmp_to_png() {
+    let bmp = test_bmp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.bmp");
+    std::fs::copy(&bmp, &input).unwrap();
+
+    cmdutils::image::convert(input.to_str().unwrap(), "png").unwrap();
+
+    let output = input.with_extension("png");
+    assert!(output.exists(), "PNG output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 5);
+    assert_eq!(img.height(), 5);
+}
+
+#[test]
 fn test_convert_same_format_error() {
     let png = test_png_path();
     let err = cmdutils::image::convert(&png, "png").unwrap_err();
@@ -94,7 +177,7 @@ fn test_convert_invalid_input() {
 #[test]
 fn test_convert_unsupported_format() {
     let png = test_png_path();
-    let err = cmdutils::image::convert(&png, "gif").unwrap_err();
+    let err = cmdutils::image::convert(&png, "xxx").unwrap_err();
     let msg = format!("{err}");
     assert!(
         msg.contains("Unsupported output"),
@@ -135,6 +218,22 @@ fn test_resize() {
     let img = image::open(&output).unwrap();
     assert_eq!(img.width(), 100);
     assert_eq!(img.height(), 50);
+}
+
+#[test]
+fn test_resize_webp() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    cmdutils::image::resize(input.to_str().unwrap(), "30x20").unwrap();
+
+    let output = tmp.path().join("test_resized.webp");
+    assert!(output.exists(), "resized webp output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 30);
+    assert_eq!(img.height(), 20);
 }
 
 #[test]
@@ -226,6 +325,68 @@ fn test_compress_png() {
     let img = image::open(&output).unwrap();
     assert_eq!(img.width(), 4);
     assert_eq!(img.height(), 4);
+}
+
+#[test]
+fn test_compress_webp_with_quality() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    // WebP: compress with quality
+    cmdutils::image::compress(input.to_str().unwrap(), Some("50")).unwrap();
+
+    let output = tmp.path().join("test_compressed.webp");
+    assert!(output.exists(), "compressed webp output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 6);
+    assert_eq!(img.height(), 4);
+}
+
+#[test]
+fn test_compress_webp_without_quality() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    // WebP: compress without quality (default lossy)
+    cmdutils::image::compress(input.to_str().unwrap(), None).unwrap();
+
+    let output = tmp.path().join("test_compressed.webp");
+    assert!(output.exists(), "compressed webp output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 6);
+    assert_eq!(img.height(), 4);
+}
+
+#[test]
+fn test_compress_bmp() {
+    let bmp = test_bmp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.bmp");
+    std::fs::copy(&bmp, &input).unwrap();
+
+    // BMP: compress without quality
+    cmdutils::image::compress(input.to_str().unwrap(), None).unwrap();
+
+    let output = tmp.path().join("test_compressed.bmp");
+    assert!(output.exists(), "compressed bmp output should exist");
+    let img = image::open(&output).unwrap();
+    assert_eq!(img.width(), 5);
+    assert_eq!(img.height(), 5);
+}
+
+#[test]
+fn test_compress_bmp_with_quality_errors() {
+    let bmp = test_bmp_path();
+    let err = cmdutils::image::compress(&bmp, Some("80")).unwrap_err();
+    let msg = format!("{err}");
+    assert!(
+        msg.contains("does not support a quality"),
+        "should reject quality for BMP: {msg}"
+    );
 }
 
 #[test]
@@ -341,6 +502,25 @@ fn test_cli_image_convert() {
 }
 
 #[test]
+fn test_cli_image_convert_webp() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    let bin = binary_path();
+    let output = Command::new(&bin)
+        .args(["image", "convert", input.to_str().unwrap(), "webp"])
+        .output()
+        .expect("failed to run cmdutils image convert to webp");
+
+    assert!(output.status.success(), "CLI should succeed");
+
+    let result = tmp.path().join("test.webp");
+    assert!(result.exists(), "webp output should exist");
+}
+
+#[test]
 fn test_cli_image_resize() {
     let png = test_png_path();
     let tmp = tempfile::TempDir::new().unwrap();
@@ -360,6 +540,28 @@ fn test_cli_image_resize() {
     let img = image::open(&result).unwrap();
     assert_eq!(img.width(), 50);
     assert_eq!(img.height(), 30);
+}
+
+#[test]
+fn test_cli_image_resize_webp() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    let bin = binary_path();
+    let output = Command::new(&bin)
+        .args(["image", "resize", input.to_str().unwrap(), "20x15"])
+        .output()
+        .expect("failed to run cmdutils image resize webp");
+
+    assert!(output.status.success(), "CLI should succeed");
+
+    let result = tmp.path().join("test_resized.webp");
+    assert!(result.exists(), "resized webp output should exist");
+    let img = image::open(&result).unwrap();
+    assert_eq!(img.width(), 20);
+    assert_eq!(img.height(), 15);
 }
 
 #[test]
@@ -402,6 +604,25 @@ fn test_cli_image_compress_png() {
 
     let result = tmp.path().join("test_compressed.png");
     assert!(result.exists(), "compressed output should exist");
+}
+
+#[test]
+fn test_cli_image_compress_webp() {
+    let webp = test_webp_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.webp");
+    std::fs::copy(&webp, &input).unwrap();
+
+    let bin = binary_path();
+    let output = Command::new(&bin)
+        .args(["image", "compress", input.to_str().unwrap(), "60"])
+        .output()
+        .expect("failed to run cmdutils image compress webp");
+
+    assert!(output.status.success(), "CLI should succeed for WebP compress");
+
+    let result = tmp.path().join("test_compressed.webp");
+    assert!(result.exists(), "compressed webp output should exist");
 }
 
 #[test]
@@ -482,6 +703,89 @@ fn test_cli_image_nonexistent_file_errors() {
         stderr.contains("not found"),
         "should mention not found: {stderr}"
     );
+}
+
+// ── image::metadata ─────────────────────────────────────────────────────────
+
+#[test]
+fn test_metadata_png() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    cmdutils::image::metadata(input.to_str().unwrap(), None).unwrap();
+}
+
+#[test]
+fn test_metadata_png_with_report() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    let report = tmp.path().join("report.pdf");
+    cmdutils::image::metadata(
+        input.to_str().unwrap(),
+        Some(report.to_str().unwrap()),
+    )
+    .unwrap();
+
+    assert!(report.exists(), "PDF report should exist");
+    assert!(
+        std::fs::metadata(&report).unwrap().len() > 100,
+        "PDF should be non-trivial"
+    );
+}
+
+#[test]
+fn test_metadata_nonexistent_file() {
+    let err = cmdutils::image::metadata("/nope/missing.png", None).unwrap_err();
+    let msg = format!("{err}");
+    assert!(msg.contains("not found"), "should report missing: {msg}");
+}
+
+#[test]
+fn test_cli_image_metadata() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    let bin = binary_path();
+    let output = Command::new(&bin)
+        .args(["image", "metadata", input.to_str().unwrap()])
+        .output()
+        .expect("failed to run cmdutils image metadata");
+
+    assert!(output.status.success(), "CLI should succeed");
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    assert!(stdout.contains("Metadata"), "output should contain Metadata");
+    assert!(stdout.contains("Image"), "output should contain Image section");
+}
+
+#[test]
+fn test_cli_image_metadata_with_report() {
+    let png = test_png_path();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let input = tmp.path().join("test.png");
+    std::fs::copy(&png, &input).unwrap();
+
+    let report = tmp.path().join("report.pdf");
+    let bin = binary_path();
+    let output = Command::new(&bin)
+        .args([
+            "image",
+            "metadata",
+            input.to_str().unwrap(),
+            "--report",
+            report.to_str().unwrap(),
+        ])
+        .output()
+        .expect("failed to run cmdutils image metadata --report");
+
+    assert!(output.status.success(), "CLI should succeed");
+    assert!(report.exists(), "PDF report should exist");
 }
 
 #[test]

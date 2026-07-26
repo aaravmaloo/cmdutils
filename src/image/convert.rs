@@ -1,8 +1,7 @@
 use std::ffi::OsStr;
-use std::fs::File;
 use std::path::Path;
 
-use oxipng::{InFile, Options as PngOptions, OutFile};
+use crate::image::helpers;
 
 pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -17,68 +16,44 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
         .ok_or_else(|| format!("Could not determine extension for: {input}"))?
         .to_lowercase();
 
-    let output_ext = match target_format {
-        "jpeg" | "jpg" => "jpg",
-        "png" => "png",
-        other => {
-            return Err(
-                format!("Unsupported output format: '{other}'. Supported: jpg, jpeg, png").into(),
-            )
-        }
-    };
+    // Validate input format
+    if !helpers::is_supported_input(&input_ext) {
+        let supported = helpers::INPUT_FORMATS.join(", ");
+        return Err(format!(
+            "Unsupported input format: '.{input_ext}'. Supported: {supported}"
+        )
+        .into());
+    }
 
-    let input_format_name = match input_ext.as_str() {
-        "png" => "PNG",
-        "jpg" | "jpeg" => "JPEG",
-        _ => {
-            return Err(format!(
-                "Unsupported input format: '.{input_ext}'. Supported: png, jpg, jpeg"
-            )
-            .into())
+    // Validate and normalize output format
+    let target_lower = target_format.to_lowercase();
+    let output_ext = match target_lower.as_str() {
+        "jpg" | "jpeg" => "jpg",
+        "tif" => "tiff",
+        other => {
+            if helpers::is_supported_output(other) {
+                other
+            } else {
+                let supported = helpers::OUTPUT_FORMATS.join(", ");
+                return Err(format!(
+                    "Unsupported output format: '{target_format}'. Supported: {supported}"
+                )
+                .into());
+            }
         }
     };
 
     // Check for same-format conversion
-    if input_ext == output_ext
-        || (matches!(input_ext.as_str(), "jpg" | "jpeg") && output_ext == "jpg")
-    {
+    if helpers::same_format(&input_ext, output_ext) {
         return Err("Input and output formats are the same; nothing to do.".into());
     }
 
     let original_size = std::fs::metadata(input_path)?.len();
-    let img = image::open(input_path)?;
+    let img = helpers::load_image(input_path)?;
     let output_path = input_path.with_extension(output_ext);
-    let output_format_name = match output_ext {
-        "jpg" => "JPEG",
-        "png" => "PNG",
-        _ => unreachable!(),
-    };
 
-    if output_ext == "jpg" {
-        // PNG → JPEG: use high-quality JPEG encoding (quality 90)
-        let rgb = img.to_rgb8();
-        let mut file = File::create(&output_path)?;
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, 90);
-        encoder.encode(
-            rgb.as_raw(),
-            rgb.width(),
-            rgb.height(),
-            image::ExtendedColorType::Rgb8,
-        )?;
-    } else {
-        // JPEG → PNG: save as PNG then optimize with oxipng
-        img.save(&output_path)?;
-        let mut opts = PngOptions::max_compression();
-        opts.force = true;
-        oxipng::optimize(
-            &InFile::Path(output_path.clone()),
-            &OutFile::Path {
-                path: Some(output_path.clone()),
-                preserve_attrs: false,
-            },
-            &opts,
-        )?;
-    }
+    // Save with format-appropriate encoding
+    helpers::save_with_quality(&img, &output_path, None)?;
 
     let new_size = std::fs::metadata(&output_path)?.len();
     let pct = if original_size > 0 {
@@ -87,13 +62,13 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
         0.0
     };
 
+    let input_name = helpers::format_name(&input_ext);
+    let output_name = helpers::format_name(output_ext);
+
     println!(
-        "Converted {} → {} ({}B → {}B, {:.1}%): {}",
-        input_format_name,
-        output_format_name,
+        "Converted {input_name} → {output_name} ({}B → {}B, {pct:.1}%): {}",
         original_size,
         new_size,
-        pct,
         output_path.display()
     );
 

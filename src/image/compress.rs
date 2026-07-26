@@ -1,8 +1,7 @@
 use std::ffi::OsStr;
-use std::fs::File;
 use std::path::Path;
 
-use oxipng::{InFile, Options as PngOptions, OutFile};
+use crate::image::helpers;
 
 pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -17,79 +16,103 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
         .ok_or_else(|| format!("Could not determine extension for: {input}"))?
         .to_lowercase();
 
-    let is_png = input_ext == "png";
-    if !is_png && !matches!(input_ext.as_str(), "jpg" | "jpeg") {
+    // Validate input format
+    if !helpers::is_supported_input(&input_ext) {
+        let supported = helpers::INPUT_FORMATS.join(", ");
+        return Err(format!(
+            "Unsupported format: '.{input_ext}'. Supported: {supported}"
+        )
+        .into());
+    }
+
+    // SVG is not directly compressible (it's vector); we could rasterize then compress,
+    // but that changes the nature of the file. Reject with a clear message.
+    if input_ext == "svg" {
         return Err(
-            format!("Unsupported format: '.{input_ext}'. Supported: png, jpg, jpeg").into(),
+            "SVG files are vector-based and cannot be lossily compressed. \
+             Use `convert` to rasterize SVG to a pixel format first."
+                .into(),
         );
     }
 
     let original_size = std::fs::metadata(input_path)?.len();
-    let img = image::open(input_path)?;
+    let img = helpers::load_image(input_path)?;
 
     let stem = input_path
         .file_stem()
         .and_then(OsStr::to_str)
         .unwrap_or("output");
-    let ext = if input_ext == "jpeg" {
-        "jpg"
-    } else {
-        &input_ext
+
+    // Determine output extension (normalize jpeg → jpg, tif → tiff)
+    let ext = match input_ext.as_str() {
+        "jpeg" => "jpg",
+        "tif" => "tiff",
+        other => other,
     };
-    let output_path = input_path.with_file_name(format!("{}_compressed.{ext}", stem));
 
-    if is_png {
-        // PNG: don't allow quality percentage (lossless, always max compression)
-        if quality_str.is_some() {
-            return Err(
-                "PNG compression is lossless — quality setting is not applicable.\n\
-                 Use: cmdutils image compress <input.png>\n\
-                 (JPEG compression accepts a quality value 1-100)"
-                    .into(),
-            );
-        }
-        // Save the PNG first, then optimize with oxipng (zopfli + max level)
-        img.save(&output_path)?;
-        let mut opts = PngOptions::max_compression();
-        opts.force = true;
-        oxipng::optimize(
-            &InFile::Path(output_path.clone()),
-            &OutFile::Path {
-                path: Some(output_path.clone()),
-                preserve_attrs: false,
-            },
-            &opts,
-        )?;
-    } else {
-        // JPEG: quality is required
-        let quality: u8 = match quality_str {
-            Some(q) => q
-                .parse()
-                .map_err(|_| format!("Invalid quality value: '{q}'. Must be a number 1-100"))?,
-            None => {
-                return Err("JPEG compression requires a quality value 1-100.\n\
-                     Use: cmdutils image compress <input.jpg> <quality>"
-                    .into());
+    let output_path = input_path.with_file_name(format!("{stem}_compressed.{ext}"));
+
+    // Format-specific compression logic
+    match ext {
+        "png" => {
+            // PNG: lossless, max compression — no quality accepted
+            if quality_str.is_some() {
+                return Err(
+                    "PNG compression is lossless — quality setting is not applicable.\n\
+                     Use: cmdutils image compress <input.png>\n\
+                     (JPEG accepts a quality value 1-100)"
+                        .into(),
+                );
             }
-        };
-
-        if !(1..=100).contains(&quality) {
-            return Err(format!("Quality must be between 1 and 100, got {quality}").into());
+            helpers::save_with_quality(&img, &output_path, None)?;
         }
-
-        let rgb = img.to_rgb8();
-        let mut file = File::create(&output_path)?;
-        let mut encoder = image::codecs::jpeg::JpegEncoder::new_with_quality(&mut file, quality);
-        encoder.encode(
-            rgb.as_raw(),
-            rgb.width(),
-            rgb.height(),
-            image::ExtendedColorType::Rgb8,
-        )?;
+        "jpg" => {
+            // JPEG: quality is required
+            let quality: u8 = match quality_str {
+                Some(q) => q.parse().map_err(|_| {
+                    format!("Invalid quality value: '{q}'. Must be a number 1-100")
+                })?,
+                None => {
+                    return Err(
+                        "JPEG compression requires a quality value 1-100.\n\
+                         Use: cmdutils image compress <input.jpg> <quality>"
+                            .into(),
+                    );
+                }
+            };
+            if !(1..=100).contains(&quality) {
+                return Err(format!("Quality must be between 1 and 100, got {quality}").into());
+            }
+            helpers::save_with_quality(&img, &output_path, Some(quality))?;
+        }
+        "webp" => {
+            // WebP: only lossless encoding is available via `image` 0.25.
+            // Quality argument is accepted for compatibility but ignored.
+            if let Some(q) = quality_str {
+                // Validate it's a number even though we don't use it yet.
+                let _: u8 = q.parse().map_err(|_| {
+                    format!("Invalid quality value: '{q}'. Must be a number 1-100")
+                })?;
+            }
+            helpers::save_with_quality(&img, &output_path, None)?;
+        }
+        _ => {
+            // All other formats: re-encode as-is. Quality is not applicable.
+            if quality_str.is_some() {
+                let fmt = helpers::format_name(ext);
+                return Err(format!(
+                    "{fmt} compression does not support a quality setting.\n\
+                     Use: cmdutils image compress <input.{ext}>"
+                )
+                .into());
+            }
+            helpers::save_with_quality(&img, &output_path, None)?;
+        }
     }
 
     let new_size = std::fs::metadata(&output_path)?.len();
-    // Show percentage if known
+    let fmt_name = helpers::format_name(ext);
+
     if original_size > 0 {
         let diff = original_size.abs_diff(new_size);
         let pct = diff as f64 / original_size as f64 * 100.0;
@@ -99,24 +122,19 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
             "grew"
         };
         println!(
-            "Compressed {} ({}B → {}B, {} {:.1}%): {}",
-            if is_png { "PNG" } else { "JPEG" },
+            "Compressed {fmt_name} ({}B → {}B, {direction} {pct:.1}%): {}",
             original_size,
             new_size,
-            direction,
-            pct,
             output_path.display()
         );
         if new_size > original_size {
             println!(
-                "  ⚠  Output is {:.1}% larger — source may already be well-optimized",
-                pct
+                "  ⚠  Output is {pct:.1}% larger — source may already be well-optimized"
             );
         }
     } else {
         println!(
-            "Compressed {} ({}B → {}B): {}",
-            if is_png { "PNG" } else { "JPEG" },
+            "Compressed {fmt_name} ({}B → {}B): {}",
             original_size,
             new_size,
             output_path.display()
