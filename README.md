@@ -71,9 +71,9 @@ This design keeps the core small while making it simple to add new subnets, such
 
 | Util | Description | Status |
 |---|---|:---:|
-| `resize` | Resize an image to exact dimensions | Stable |
-| `compress` | Compress an image with a quality setting (1 to 100) | Stable |
-| `convert` | Convert an image between formats (PNG to JPEG) | Stable |
+| `resize` | Resize an image to exact dimensions (any format) | Stable |
+| `compress` | Compress an image (PNG: lossless max; JPEG/WebP: quality 1–100; others: re-encode) | Stable |
+| `convert` | Convert between any supported formats (PNG, JPEG, WebP, BMP, GIF, TIFF, AVIF, SVG, and more) | Stable |
 
 More subnets (`pdf`, `text`, `archive`) are on the roadmap below.
 

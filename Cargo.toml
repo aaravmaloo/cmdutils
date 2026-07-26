@@ -7,6 +7,9 @@ authors = ["Aarav Maloo"]
 clap = { version = "4", features = ["derive"] }
 image = "0.25"
 oxipng = { version = "9", default-features = false, features = ["zopfli", "parallel"] }
+resvg = "0.43"
+kamadak-exif = "0.6"
+printpdf = "0.7"
 
 [dev-dependencies]
 tempfile = "3"
