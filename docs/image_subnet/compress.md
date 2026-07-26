@@ -5,14 +5,25 @@ Compresses images to reduce file size. Behaviour differs by format.
 ## Usage
 
 ```
-cmdutils image compress <input>          (PNG — max lossless compression)
-cmdutils image compress <input> <quality> (JPEG — quality 1–100)
+cmdutils image compress <input>                         (PNG, BMP, GIF, TIFF, etc.)
+cmdutils image compress <input> <quality>                (JPEG — quality 1–100)
+cmdutils image compress <input> <quality>                (WebP — quality 1–100, optional)
 ```
 
-| Argument  | PNG | JPEG |
-|-----------|-----|------|
-| `input`   | Required | Required |
-| `quality` | **Not accepted** (error) | Required (1–100) |
+| Argument  | PNG / lossless formats | JPEG | WebP |
+|-----------|:----------------------:|:----:|:----:|
+| `input`   | Required               | Required | Required |
+| `quality` | **Not accepted** (error) | Required (1–100) | Accepted but ignored* |
+
+*WebP encoding in `image` 0.25 is **lossless only**; the quality value is
+accepted for forwards-compatibility but does not affect output.
+
+## Supported Input Formats
+
+All formats that can be decoded are accepted: PNG, JPEG, WebP, BMP, GIF, ICO,
+TIFF, AVIF, PNM, QOI, TGA, OpenEXR, Farbfeld, DDS, HDR.
+
+> **SVG** is not directly compressible — use `convert` to rasterize first.
 
 ## Behaviour
 
@@ -43,12 +54,27 @@ Compressed PNG (512596B → 524581B, grew 2.3%): photo_compressed.png
 
 1. Opens the image and re-encodes it as JPEG at the user-specified quality.
 2. Uses `image::codecs::jpeg::JpegEncoder::new_with_quality()`.
-3. Quality is validated to be in the range 1–100 (inclusive). Values above
-   `u8::MAX` (255) are caught at parse time.
+3. Quality is validated to be in the range 1–100 (inclusive).
 
 ```
 Compressed JPEG (40677B → 8231B, saved 79.8%): photo_compressed.jpg
 ```
+
+### WebP (lossless)
+
+1. Opens the image and re-encodes as **lossless WebP**.
+2. The `image` crate in this version does not expose lossy WebP encoding;
+   quality values are accepted but ignored.
+3. Alpha channels are preserved.
+
+```
+Compressed WebP (512596B → 38921B, saved 24.1%): photo_compressed.webp
+```
+
+### Other formats (BMP, GIF, TIFF, etc.)
+
+1. Opens the image and re-saves it in the same format.
+2. Quality is not applicable — an error is returned if provided.
 
 ## Errors
 
@@ -56,7 +82,9 @@ Compressed JPEG (40677B → 8231B, saved 79.8%): photo_compressed.jpg
 |-----------|-----------|
 | PNG with quality | Error: _quality setting is not applicable_ |
 | JPEG without quality | Error: _requires a quality value 1–100_ |
+| WebP with invalid quality | Error: _Invalid quality value_ |
 | Quality not a number | Error: _Invalid quality value_ |
 | Quality out of range | Error: _must be between 1 and 100_ |
-| Unsupported format | Error: _Supported: png, jpg, jpeg_ |
+| Unsupported format | Error: _Unsupported format_ |
+| SVG input | Error: _cannot be lossily compressed_ |
 | Missing file | Error: _Input file not found_ |

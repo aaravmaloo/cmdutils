@@ -1,6 +1,6 @@
 # `convert` — Image Format Conversion
 
-Converts images between PNG and JPEG formats.
+Converts images between any two supported formats.
 
 ## Usage
 
@@ -10,23 +10,42 @@ cmdutils image convert <input> <format>
 
 | Argument | Description |
 |----------|-------------|
-| `input`  | Path to source image (`.png`, `.jpg`, `.jpeg`) |
-| `format` | Target format: `jpg`, `jpeg`, or `png` |
+| `input`  | Path to source image (`.png`, `.jpg`, `.jpeg`, `.webp`, `.bmp`, `.gif`, `.tiff`, `.avif`, `.svg`, and more) |
+| `format` | Target format: `png`, `jpg`, `jpeg`, `webp`, `bmp`, `gif`, `ico`, `tiff`, `avif`, `pnm`, `qoi`, `tga`, etc. |
+
+## Supported Formats
+
+| Format     | Input (read) | Output (write) |
+|------------|:------------:|:---------------:|
+| PNG        | ✅           | ✅ (oxipng-optimized) |
+| JPEG       | ✅           | ✅ (quality 90) |
+| WebP       | ✅           | ✅               |
+| BMP        | ✅           | ✅               |
+| GIF        | ✅           | ✅               |
+| ICO        | ✅           | ✅               |
+| TIFF       | ✅           | ✅               |
+| AVIF       | ✅           | ✅               |
+| PNM        | ✅           | ✅               |
+| QOI        | ✅           | ✅               |
+| TGA        | ✅           | ✅               |
+| OpenEXR    | ✅           | ✅               |
+| Farbfeld   | ✅           | ✅               |
+| DDS        | ✅           | ✅               |
+| HDR        | ✅           | ✅               |
+| **SVG**    | ✅ (rasterized) | ❌ (vector → raster only) |
 
 ## Behaviour
 
-### PNG → JPEG
-
-Opens the source PNG, converts to RGB (discarding alpha), and encodes as JPEG
-at **quality 90** using `image::codecs::jpeg::JpegEncoder`. This produces a
-visually lossless result with significant file-size savings for photographic
-content.
-
-### JPEG → PNG
-
-Decodes the JPEG, saves an intermediate PNG, then runs **oxipng** at
-maximum compression level (`Options::max_compression()`, Zopfli + parallel
-enabled) to produce the smallest possible lossless output.
+1. The source image is decoded (SVG files are rendered to a raster at their
+   native viewport size).
+2. The result is encoded in the target format.
+3. Format-specific optimisations are applied automatically:
+   - **PNG** output is post-processed with **oxipng** (max compression,
+     Zopfli + parallel).
+   - **JPEG** output uses quality 90 (`JpegEncoder::new_with_quality`).
+   - **WebP** output uses the built-in WebP encoder.
+   - All other formats are written via the `image` crate's default encoder.
+4. If the source and target format are the same, an error is returned.
 
 ## Output
 
@@ -35,6 +54,8 @@ A size comparison is printed:
 
 ```
 Converted PNG → JPEG (512596B → 52341B, -89.8%): photo.jpg
+Converted PNG → WebP (512596B → 40123B, -21.7%): photo.webp
+Converted SVG → PNG (2450B → 12400B, +406.1%): logo.png
 ```
 
 ## Errors
@@ -42,11 +63,6 @@ Converted PNG → JPEG (512596B → 52341B, -89.8%): photo.jpg
 | Condition | Behaviour |
 |-----------|-----------|
 | Input file missing | Error: _Input file not found_ |
-| Unsupported format | Error: _Unsupported output format_ |
+| Unsupported input format | Error: _Unsupported input format_ |
+| Unsupported output format | Error: _Unsupported output format_ |
 | Source and target are the same | Error: _same format; nothing to do_ |
-
-## Dependencies
-
-- `image` — loading, pixel format conversion
-- `image::codecs::jpeg::JpegEncoder` — JPEG encoding (quality 90)
-- `oxipng` — PNG optimization with Zopfli + parallel
