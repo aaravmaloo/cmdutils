@@ -79,17 +79,18 @@ More subnets (`pdf`, `text`, `archive`) are on the roadmap below.
 
 ---
 
-## Installation
-
-``` #clone and build from source ```
+## Installation``` #clone and build from source ```
 
 
-git clone https://github.com/yourname/cmdutils.git
+git clone https://github.com/aaravmaloo/cmdutils.git
 cd cmdutils
 cargo build --release
 ```
 ``` #install via winget  ```
 winget install aaravmaloo.cmdutils
+```
+``` #install via AUR  ```
+yay -S cmdutils-bin
 ```
 
 
