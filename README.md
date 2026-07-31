@@ -88,6 +88,10 @@ git clone https://github.com/yourname/cmdutils.git
 cd cmdutils
 cargo build --release
 ```
+``` #install via winget  ```
+winget install aaravmaloo.cmdutils
+```
+
 
 ---
 
