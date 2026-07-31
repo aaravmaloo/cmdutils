@@ -19,10 +19,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     // Validate input format
     if !helpers::is_supported_input(&input_ext) {
         let supported = helpers::INPUT_FORMATS.join(", ");
-        return Err(format!(
-            "Unsupported format: '.{input_ext}'. Supported: {supported}"
-        )
-        .into());
+        return Err(format!("Unsupported format: '.{input_ext}'. Supported: {supported}").into());
     }
 
     // SVG is not directly compressible (it's vector); we could rasterize then compress,
@@ -69,15 +66,13 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
         "jpg" => {
             // JPEG: quality is required
             let quality: u8 = match quality_str {
-                Some(q) => q.parse().map_err(|_| {
-                    format!("Invalid quality value: '{q}'. Must be a number 1-100")
-                })?,
+                Some(q) => q
+                    .parse()
+                    .map_err(|_| format!("Invalid quality value: '{q}'. Must be a number 1-100"))?,
                 None => {
-                    return Err(
-                        "JPEG compression requires a quality value 1-100.\n\
+                    return Err("JPEG compression requires a quality value 1-100.\n\
                          Use: cmdutils image compress <input.jpg> <quality>"
-                            .into(),
-                    );
+                        .into());
                 }
             };
             if !(1..=100).contains(&quality) {
@@ -90,9 +85,9 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
             // Quality argument is accepted for compatibility but ignored.
             if let Some(q) = quality_str {
                 // Validate it's a number even though we don't use it yet.
-                let _: u8 = q.parse().map_err(|_| {
-                    format!("Invalid quality value: '{q}'. Must be a number 1-100")
-                })?;
+                let _: u8 = q
+                    .parse()
+                    .map_err(|_| format!("Invalid quality value: '{q}'. Must be a number 1-100"))?;
             }
             helpers::save_with_quality(&img, &output_path, None)?;
         }
@@ -128,9 +123,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
             output_path.display()
         );
         if new_size > original_size {
-            println!(
-                "  ⚠  Output is {pct:.1}% larger — source may already be well-optimized"
-            );
+            println!("  ⚠  Output is {pct:.1}% larger — source may already be well-optimized");
         }
     } else {
         println!(

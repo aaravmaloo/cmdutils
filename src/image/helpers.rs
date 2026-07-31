@@ -30,14 +30,14 @@ pub fn format_name(ext: &str) -> &'static str {
 
 /// All output formats we can encode to (lowercase).
 pub const OUTPUT_FORMATS: &[&str] = &[
-    "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "tiff", "tif", "avif",
-    "pnm", "qoi", "tga", "exr", "ff", "dds",
+    "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "tiff", "tif", "avif", "pnm", "qoi", "tga",
+    "exr", "ff", "dds",
 ];
 
 /// All input formats we can decode (lowercase). SVG is input-only.
 pub const INPUT_FORMATS: &[&str] = &[
-    "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "tiff", "tif", "avif",
-    "pnm", "qoi", "tga", "exr", "ff", "dds", "svg",
+    "png", "jpg", "jpeg", "webp", "bmp", "gif", "ico", "tiff", "tif", "avif", "pnm", "qoi", "tga",
+    "exr", "ff", "dds", "svg",
 ];
 
 /// Check whether `ext` is a recognised output format.
@@ -103,10 +103,11 @@ fn load_svg(path: &Path) -> Result<DynamicImage, Box<dyn std::error::Error>> {
         &mut pixmap.as_mut(),
     );
 
-    let img =
-        DynamicImage::ImageRgba8(RgbaImage::from_raw(width, height, pixmap.data().to_vec()).ok_or(
-            format!("Failed to create image from rendered SVG ({width}x{height})"),
-        )?);
+    let img = DynamicImage::ImageRgba8(
+        RgbaImage::from_raw(width, height, pixmap.data().to_vec()).ok_or(format!(
+            "Failed to create image from rendered SVG ({width}x{height})"
+        ))?,
+    );
 
     Ok(img)
 }
@@ -179,10 +180,7 @@ fn save_png_optimized(
 }
 
 /// Encode as WebP (lossless only — `image` 0.25 does not support lossy WebP).
-fn save_webp(
-    img: &DynamicImage,
-    output_path: &Path,
-) -> Result<(), Box<dyn std::error::Error>> {
+fn save_webp(img: &DynamicImage, output_path: &Path) -> Result<(), Box<dyn std::error::Error>> {
     use image::codecs::webp::WebPEncoder;
 
     let has_alpha = img.color().has_alpha();

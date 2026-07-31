@@ -7,7 +7,7 @@ use printpdf::{BuiltinFont, IndirectFontRef, Mm, PdfDocument, PdfLayerReference}
 
 use crate::image::helpers;
 
-/// ── Public entry point ──────────────────────────────────────────────────────
+// ── Public entry point ──────────────────────────────────────────────────────
 
 pub fn metadata(input: &str, report: Option<&str>) -> Result<(), Box<dyn std::error::Error>> {
     let input_path = Path::new(input);
@@ -34,34 +34,38 @@ pub fn metadata(input: &str, report: Option<&str>) -> Result<(), Box<dyn std::er
     let format_name = helpers::format_name(&ext);
 
     let exif_opt = parse_exif(input_path);
-
-    // ── Display to stdout ────────────────────────────────────────────────
-    print_metadata(
-        input_path,
+    let meta = ImageMetadata {
+        path: input_path,
         file_size,
         format_name,
         width,
         height,
         color_type,
-        exif_opt.as_ref(),
-    );
+        exif: exif_opt.as_ref(),
+    };
+
+    // ── Display to stdout ────────────────────────────────────────────────
+    print_metadata(&meta);
 
     // ── PDF Report ───────────────────────────────────────────────────────
     if let Some(report_path) = report {
-        generate_pdf_report(
-            input_path,
-            file_size,
-            format_name,
-            width,
-            height,
-            color_type,
-            exif_opt.as_ref(),
-            report_path,
-        )?;
+        generate_pdf_report(&meta, report_path)?;
         println!("\n ✅ PDF report saved to: {report_path}");
     }
 
     Ok(())
+}
+
+/// All metadata collected for one image, shared between the terminal
+/// output and the PDF report renderer.
+struct ImageMetadata<'a> {
+    path: &'a Path,
+    file_size: u64,
+    format_name: &'a str,
+    width: u32,
+    height: u32,
+    color_type: image::ColorType,
+    exif: Option<&'a exif::Exif>,
 }
 
 // ── EXIF parsing ────────────────────────────────────────────────────────────
@@ -71,22 +75,12 @@ pub fn metadata(input: &str, report: Option<&str>) -> Result<(), Box<dyn std::er
 fn parse_exif(path: &Path) -> Option<exif::Exif> {
     let file = std::fs::File::open(path).ok()?;
     let mut reader = BufReader::new(file);
-    exif::Reader::new()
-        .read_from_container(&mut reader)
-        .ok()
+    exif::Reader::new().read_from_container(&mut reader).ok()
 }
 
 // ── Terminal output ─────────────────────────────────────────────────────────
 
-fn print_metadata(
-    path: &Path,
-    file_size: u64,
-    format_name: &str,
-    width: u32,
-    height: u32,
-    color_type: image::ColorType,
-    exif: Option<&exif::Exif>,
-) {
+fn print_metadata(meta: &ImageMetadata<'_>) {
     println!();
     println!(" ╔══════════════════════════════════════════════╗");
     println!(" ║         Image Metadata Report                ║");
@@ -95,31 +89,34 @@ fn print_metadata(
 
     // ── File Info ────────────────────────────────────────────────────────
     println!(" 📁  File");
-    println!("    Path:      {}", path.display());
-    if let Ok(canonical) = path.canonicalize() {
+    println!("    Path:      {}", meta.path.display());
+    if let Ok(canonical) = meta.path.canonicalize() {
         println!("    Resolved:  {}", canonical.display());
     }
-    print_file_size(file_size);
-    println!("    Format:    {format_name}");
+    print_file_size(meta.file_size);
+    println!("    Format:    {}", meta.format_name);
     println!();
 
     // ── Image Info ───────────────────────────────────────────────────────
     println!(" 🖼  Image");
-    println!("    Dimensions: {width} × {height} px");
-    let megapixels = (width as f64 * height as f64 / 1_000_000.0 * 10.0).round() / 10.0;
+    println!("    Dimensions: {} × {} px", meta.width, meta.height);
+    let megapixels = (meta.width as f64 * meta.height as f64 / 1_000_000.0 * 10.0).round() / 10.0;
     if megapixels >= 0.1 {
         println!("    Megapixels: {megapixels} MP");
     }
-    let bpp = color_type.bits_per_pixel();
-    println!("    Color:      {}", color_type_desc(color_type));
+    let bpp = meta.color_type.bits_per_pixel();
+    println!("    Color:      {}", color_type_desc(meta.color_type));
     println!("    Bit depth:  {bpp} bpp");
     println!();
 
     // ── EXIF Data ────────────────────────────────────────────────────────
-    if let Some(exif) = exif {
+    if let Some(exif) = meta.exif {
         let fields: Vec<_> = exif.fields().collect();
         if !fields.is_empty() {
-            println!(" 📷  EXIF Metadata ({nfields} fields)", nfields = fields.len());
+            println!(
+                " 📷  EXIF Metadata ({nfields} fields)",
+                nfields = fields.len()
+            );
             for &field in &fields {
                 let tag = format!("{:?}", field.tag);
                 let value = field.display_value().with_unit(field).to_string();
@@ -162,20 +159,13 @@ fn print_file_size(bytes: u64) {
 // ── PDF Report ──────────────────────────────────────────────────────────────
 
 fn generate_pdf_report(
-    path: &Path,
-    file_size: u64,
-    format_name: &str,
-    width: u32,
-    height: u32,
-    color_type: image::ColorType,
-    exif: Option<&exif::Exif>,
+    meta: &ImageMetadata<'_>,
     report_path: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-
-
     let title = format!(
         "Image Metadata — {}",
-        path.file_name()
+        meta.path
+            .file_name()
             .map(|s| s.to_string_lossy())
             .unwrap_or(std::borrow::Cow::Borrowed("unknown"))
     );
@@ -193,30 +183,36 @@ fn generate_pdf_report(
 
     // ── Title ────────────────────────────────────────────────────────────
     layer.use_text("Image Metadata Report", 20.0, Mm(20.0), y, &bold);
-    y = y - Mm(13.0);
+    y -= Mm(13.0);
 
     // ── File section ─────────────────────────────────────────────────────
     y = pdf_section_header(&layer, "File", y, &bold);
-    y = pdf_field(&layer, "Path", &path.display().to_string(), y, &font);
-    if let Ok(canonical) = path.canonicalize() {
-        y = pdf_field(&layer, "Resolved", &canonical.display().to_string(), y, &font);
+    y = pdf_field(&layer, "Path", &meta.path.display().to_string(), y, &font);
+    if let Ok(canonical) = meta.path.canonicalize() {
+        y = pdf_field(
+            &layer,
+            "Resolved",
+            &canonical.display().to_string(),
+            y,
+            &font,
+        );
     }
-    let size_str = format!("{file_size} bytes");
+    let size_str = format!("{} bytes", meta.file_size);
     y = pdf_field(&layer, "Size", &size_str, y, &font);
-    y = pdf_field(&layer, "Format", format_name, y, &font);
-    y = y - Mm(5.0);
+    y = pdf_field(&layer, "Format", meta.format_name, y, &font);
+    y -= Mm(5.0);
 
     // ── Image section ────────────────────────────────────────────────────
     y = pdf_section_header(&layer, "Image", y, &bold);
-    let dims = format!("{width} × {height} px");
+    let dims = format!("{} × {} px", meta.width, meta.height);
     y = pdf_field(&layer, "Dimensions", &dims, y, &font);
-    y = pdf_field(&layer, "Color", color_type_desc(color_type), y, &font);
-    let bpp = format!("{} bpp", color_type.bits_per_pixel());
+    y = pdf_field(&layer, "Color", color_type_desc(meta.color_type), y, &font);
+    let bpp = format!("{} bpp", meta.color_type.bits_per_pixel());
     y = pdf_field(&layer, "Bit depth", &bpp, y, &font);
-    y = y - Mm(5.0);
+    y -= Mm(5.0);
 
     // ── EXIF section ─────────────────────────────────────────────────────
-    if let Some(exif) = exif {
+    if let Some(exif) = meta.exif {
         let fields: Vec<_> = exif.fields().collect();
         if !fields.is_empty() {
             let header = format!("EXIF Metadata ({} fields)", fields.len());
@@ -231,13 +227,13 @@ fn generate_pdf_report(
                     break;
                 }
             }
-            y = y - Mm(5.0);
+            y -= Mm(5.0);
         }
     }
 
     // ── Footer ───────────────────────────────────────────────────────────
     let footer = "Generated by cmdutils";
-    y = y - Mm(10.0);
+    y -= Mm(10.0);
     layer.use_text(footer, 8.0, Mm(20.0), y, &font);
 
     // Save
@@ -248,12 +244,7 @@ fn generate_pdf_report(
     Ok(())
 }
 
-fn pdf_section_header(
-    layer: &PdfLayerReference,
-    text: &str,
-    y: Mm,
-    bold: &IndirectFontRef,
-) -> Mm {
+fn pdf_section_header(layer: &PdfLayerReference, text: &str, y: Mm, bold: &IndirectFontRef) -> Mm {
     let y = y - Mm(8.0);
     layer.use_text(text, 14.0, Mm(20.0), y, bold);
     y - Mm(6.0)

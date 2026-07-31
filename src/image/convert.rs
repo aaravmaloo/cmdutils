@@ -19,10 +19,9 @@ pub fn convert(input: &str, target_format: &str) -> Result<(), Box<dyn std::erro
     // Validate input format
     if !helpers::is_supported_input(&input_ext) {
         let supported = helpers::INPUT_FORMATS.join(", ");
-        return Err(format!(
-            "Unsupported input format: '.{input_ext}'. Supported: {supported}"
-        )
-        .into());
+        return Err(
+            format!("Unsupported input format: '.{input_ext}'. Supported: {supported}").into(),
+        );
     }
 
     // Validate and normalize output format

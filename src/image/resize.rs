@@ -31,10 +31,7 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
     // Validate input format
     if !helpers::is_supported_input(&input_ext) {
         let supported = helpers::INPUT_FORMATS.join(", ");
-        return Err(format!(
-            "Unsupported format: '.{input_ext}'. Supported: {supported}"
-        )
-        .into());
+        return Err(format!("Unsupported format: '.{input_ext}'. Supported: {supported}").into());
     }
 
     let original_size = std::fs::metadata(input_path)?.len();

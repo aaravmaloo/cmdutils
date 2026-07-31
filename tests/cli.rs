@@ -619,7 +619,10 @@ fn test_cli_image_compress_webp() {
         .output()
         .expect("failed to run cmdutils image compress webp");
 
-    assert!(output.status.success(), "CLI should succeed for WebP compress");
+    assert!(
+        output.status.success(),
+        "CLI should succeed for WebP compress"
+    );
 
     let result = tmp.path().join("test_compressed.webp");
     assert!(result.exists(), "compressed webp output should exist");
@@ -725,11 +728,7 @@ fn test_metadata_png_with_report() {
     std::fs::copy(&png, &input).unwrap();
 
     let report = tmp.path().join("report.pdf");
-    cmdutils::image::metadata(
-        input.to_str().unwrap(),
-        Some(report.to_str().unwrap()),
-    )
-    .unwrap();
+    cmdutils::image::metadata(input.to_str().unwrap(), Some(report.to_str().unwrap())).unwrap();
 
     assert!(report.exists(), "PDF report should exist");
     assert!(
@@ -760,8 +759,14 @@ fn test_cli_image_metadata() {
 
     assert!(output.status.success(), "CLI should succeed");
     let stdout = String::from_utf8_lossy(&output.stdout);
-    assert!(stdout.contains("Metadata"), "output should contain Metadata");
-    assert!(stdout.contains("Image"), "output should contain Image section");
+    assert!(
+        stdout.contains("Metadata"),
+        "output should contain Metadata"
+    );
+    assert!(
+        stdout.contains("Image"),
+        "output should contain Image section"
+    );
 }
 
 #[test]
