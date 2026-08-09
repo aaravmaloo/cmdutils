@@ -20,8 +20,11 @@
 - `crop` crops an image to a `WxH+X+Y` region with bounds validation
 - `rotate` rotates an image clockwise in 90° steps
 - `grayscale` converts an image to grayscale (Rec. 601 luma)
-- `watermark` overlays semi-transparent text on an image using a system font
-  or a custom `--font`, with `--color`, `--opacity`, `--position`, and `--size`
+- `watermark` overlays semi-transparent text on an image using a system font,
+  a bundled fallback font, or a custom `--font`, with `--color`, `--opacity`,
+  `--position`, and `--size`
+- `watermark` falls back to a bundled Roboto font when no system font is
+  installed, so it works on font-less systems (e.g. minimal CI containers)
 - `strip` removes all embedded metadata (EXIF, comments) from an image
 
 ### image subnet — batch & glob processing

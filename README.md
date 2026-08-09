@@ -90,7 +90,7 @@ This design keeps the core small while making it simple to add new subnets, such
 | `crop` | Crop an image to a `WxH+X+Y` region | Stable |
 | `rotate` | Rotate clockwise in 90° steps | Stable |
 | `grayscale` | Convert an image to grayscale | Stable |
-| `watermark` | Overlay semi-transparent text on an image | Stable |
+| `watermark` | Overlay semi-transparent text on an image (bundled fallback font — works with no system fonts) | Stable |
 | `strip` | Remove all embedded metadata (EXIF, comments) | Stable |
 
 All image utils accept **glob patterns** (e.g. `*.png`) and process matches in **parallel**.
@@ -177,6 +177,9 @@ Contributions, issues, and feature requests are welcome.
 ## License
 
 Licensed under the MIT License. See [`LICENSE`](./LICENSE) for details.
+
+The bundled `watermark` font (Roboto, latin subset) is © Google and licensed
+under the [Apache License 2.0](./assets/fonts/LICENSE-Apache-2.0.txt).
 
 ---
 

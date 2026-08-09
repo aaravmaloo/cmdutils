@@ -3,6 +3,13 @@ use image::{DynamicImage, GenericImageView, Rgba, RgbaImage};
 
 use crate::image::helpers;
 
+/// Bundled Roboto (latin subset, Apache-2.0) — guarantees watermarks work even
+/// on systems with no installed fonts (e.g. minimal CI containers).
+const FALLBACK_FONT_BYTES: &[u8] = include_bytes!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/assets/fonts/Roboto-Regular.ttf"
+));
+
 /// Overlay semi-transparent text on an image.
 ///
 /// * `text` — watermark text.
@@ -10,7 +17,7 @@ use crate::image::helpers;
 /// * `position` — `top-left`, `top-right`, `bottom-left`, `bottom-right`, `center`.
 /// * `size` — font size in pixels.
 /// * `color_hex` — 6-digit hex color (e.g. `ffffff`).
-/// * `font_path` — optional TTF/OTF file; falls back to a system font.
+/// * `font_path` — optional TTF/OTF file; falls back to a system font, then a bundled font.
 #[allow(clippy::too_many_arguments)]
 pub fn watermark(
     input: &str,
@@ -101,27 +108,70 @@ fn parse_hex_color(hex: &str) -> Result<(u8, u8, u8), Box<dyn std::error::Error>
     Ok((byte(0)?, byte(2)?, byte(4)?))
 }
 
+/// Resolve the font to use, in priority order: `--font` → system sans-serif →
+/// the font bundled with the binary.
 fn load_font(font_path: Option<&str>) -> Result<FontVec, Box<dyn std::error::Error>> {
     if let Some(path) = font_path {
         let data = std::fs::read(path).map_err(|e| format!("Could not read font file: {e}"))?;
         return FontVec::try_from_vec(data).map_err(|e| format!("Invalid font file: {e}").into());
     }
 
-    // Fall back to a system sans-serif font.
+    if let Some(font) = system_sans_font() {
+        return Ok(font);
+    }
+
+    embedded_fallback_font().map_err(|e| {
+        format!("No system sans-serif font found and the bundled fallback failed to load: {e}")
+            .into()
+    })
+}
+
+/// Look up a sans-serif font installed on the system.
+fn system_sans_font() -> Option<FontVec> {
     let mut db = fontdb::Database::new();
     db.load_system_fonts();
     let query = fontdb::Query {
         families: &[fontdb::Family::SansSerif],
         ..Default::default()
     };
-    let id = db
-        .query(&query)
-        .ok_or("No system sans-serif font found. Use --font <path> to specify a font file.")?;
+    let id = db.query(&query)?;
     // Note: `with_face_data` returns the source file's bytes; `FontVec` always
     // parses face 0, so fonts stored at face index > 0 in a collection (e.g.
     // Noto CJK) may render as a different face. Acceptable for the common case.
-    let data = db
-        .with_face_data(id, |data, _| data.to_vec())
-        .ok_or("Could not load system font data")?;
-    FontVec::try_from_vec(data).map_err(|e| format!("Invalid system font: {e}").into())
+    let data = db.with_face_data(id, |data, _| data.to_vec())?;
+    FontVec::try_from_vec(data).ok()
+}
+
+/// The font bundled with the binary (Roboto latin subset, Apache-2.0).
+fn embedded_fallback_font() -> Result<FontVec, Box<dyn std::error::Error>> {
+    FontVec::try_from_vec(FALLBACK_FONT_BYTES.to_vec())
+        .map_err(|e| format!("Invalid bundled font: {e}").into())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ab_glyph::Font;
+
+    #[test]
+    fn bundled_fallback_font_is_valid() {
+        let font = embedded_fallback_font().expect("bundled font should parse");
+        let (w, h) = imageproc::drawing::text_size(PxScale::from(16.0), &font, "TEST");
+        assert!(w > 0 && h > 0, "bundled font should render text");
+        // The docs examples watermark with "©"; guard against a subset that
+        // drops the glyph (missing glyphs map to glyph id 0 in ab_glyph).
+        assert_ne!(
+            font.glyph_id('©').0,
+            0,
+            "bundled font should include the © glyph"
+        );
+    }
+
+    #[test]
+    fn load_font_resolves_with_or_without_system_fonts() {
+        // Must succeed on machines with and without installed fonts.
+        let font = load_font(None).expect("font should resolve via system or bundled fallback");
+        let (w, _) = imageproc::drawing::text_size(PxScale::from(16.0), &font, "watermark");
+        assert!(w > 0, "resolved font should render text");
+    }
 }
