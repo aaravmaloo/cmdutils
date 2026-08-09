@@ -55,13 +55,25 @@ The internet is full of "free" PDF, image, and file tools that come wrapped in p
 ```
 cmdutils
 └── subnets
-    └── image                    (subnet)
-        ├── resize                   (util)
-        ├── compress                 (util)
-        └── convert                  (util)
+    ├── image                    (subnet)
+    │   ├── resize                   (util)
+    │   ├── compress                 (util)
+    │   ├── convert                  (util)
+    │   ├── metadata                 (util)
+    │   ├── crop                     (util)
+    │   ├── rotate                   (util)
+    │   ├── grayscale                (util)
+    │   ├── watermark                (util)
+    │   └── strip                    (util)
+    └── text                     (subnet)
+        ├── count                    (util)
+        ├── case                     (util)
+        ├── replace                  (util)
+        ├── base64                   (util)
+        └── checksum                 (util)
 ```
 
-This design keeps the core small while making it simple to add new subnets, such as `pdf`, `text`, or `archive`, without touching existing code.
+This design keeps the core small while making it simple to add new subnets, such as `pdf` or `archive`, without touching existing code.
 
 ---
 
@@ -74,8 +86,26 @@ This design keeps the core small while making it simple to add new subnets, such
 | `resize` | Resize an image to exact dimensions (any format) | Stable |
 | `compress` | Compress an image (PNG: lossless max; JPEG/WebP: quality 1–100; others: re-encode) | Stable |
 | `convert` | Convert between any supported formats (PNG, JPEG, WebP, BMP, GIF, TIFF, AVIF, SVG, and more) | Stable |
+| `metadata` | Extract and display image metadata (EXIF, dimensions, color); optional PDF report | Stable |
+| `crop` | Crop an image to a `WxH+X+Y` region | Stable |
+| `rotate` | Rotate clockwise in 90° steps | Stable |
+| `grayscale` | Convert an image to grayscale | Stable |
+| `watermark` | Overlay semi-transparent text on an image | Stable |
+| `strip` | Remove all embedded metadata (EXIF, comments) | Stable |
 
-More subnets (`pdf`, `text`, `archive`) are on the roadmap below.
+All image utils accept **glob patterns** (e.g. `*.png`) and process matches in **parallel**.
+
+### `text` subnet
+
+| Util | Description | Status |
+|---|---|:---:|
+| `count` | Count lines, words, characters, and bytes (file or stdin) | Stable |
+| `case` | Convert between upper, lower, title, snake, kebab, camel, pascal, constant | Stable |
+| `replace` | Find & replace (in-place, output file, or stdout) | Stable |
+| `base64` | Encode / decode base64 (file or stdin) | Stable |
+| `checksum` | Compute md5, sha256, or sha512 hashes | Stable |
+
+More subnets (`pdf`, `archive`) are on the roadmap.
 
 ---
 
@@ -106,13 +136,28 @@ Examples:
 
 ```bash
 # Resize an image to 800x600
-cmdutils image resize input.png --width 800 --height 600 -o output.png
+cmdutils image resize input.png 800x600
 
 # Compress a JPEG to 70% quality
-cmdutils image compress photo.jpg --quality 70 -o photo_compressed.jpg
+cmdutils image compress photo.jpg 70
 
 # Convert PNG to JPEG
-cmdutils image convert logo.png --to jpeg -o logo.jpg
+cmdutils image convert logo.png jpg
+
+# Crop a 400x300 region from a photo
+cmdutils image crop photo.png 400x300+50+40
+
+# Watermark every PNG in a folder (parallel batch)
+cmdutils image watermark '*.png' --text "© 2026"
+
+# Count words in a file
+cmdutils text count notes.txt
+
+# Convert to snake_case from stdin
+cmdutils text case --to snake --text "Hello World"
+
+# Verify a download
+cmdutils text checksum file.iso --algo sha256
 ```
 
 ---
