@@ -35,22 +35,12 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     let original_size = std::fs::metadata(input_path)?.len();
     let img = helpers::load_image(input_path)?;
 
-    let stem = input_path
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .unwrap_or("output");
-
     // Determine output extension (normalize jpeg → jpg, tif → tiff)
-    let ext = match input_ext.as_str() {
-        "jpeg" => "jpg",
-        "tif" => "tiff",
-        other => other,
-    };
-
-    let output_path = input_path.with_file_name(format!("{stem}_compressed.{ext}"));
+    let ext = helpers::output_ext(&input_ext);
+    let output_path = helpers::suffixed_path(input_path, &ext, "compressed");
 
     // Format-specific compression logic
-    match ext {
+    match ext.as_str() {
         "png" => {
             // PNG: lossless, max compression — no quality accepted
             if quality_str.is_some() {
@@ -94,7 +84,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
         _ => {
             // All other formats: re-encode as-is. Quality is not applicable.
             if quality_str.is_some() {
-                let fmt = helpers::format_name(ext);
+                let fmt = helpers::format_name(&ext);
                 return Err(format!(
                     "{fmt} compression does not support a quality setting.\n\
                      Use: cmdutils image compress <input.{ext}>"
@@ -106,7 +96,7 @@ pub fn compress(input: &str, quality_str: Option<&str>) -> Result<(), Box<dyn st
     }
 
     let new_size = std::fs::metadata(&output_path)?.len();
-    let fmt_name = helpers::format_name(ext);
+    let fmt_name = helpers::format_name(&ext);
 
     if original_size > 0 {
         let diff = original_size.abs_diff(new_size);

@@ -38,20 +38,9 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
     let img = helpers::load_image(input_path)?;
     let resized = img.resize_exact(width, height, image::imageops::Lanczos3);
 
-    let stem = input_path
-        .file_stem()
-        .and_then(OsStr::to_str)
-        .unwrap_or("output");
-
-    // Normalize extension for output
-    let ext = match input_ext.as_str() {
-        "jpeg" => "jpg",
-        "tif" => "tiff",
-        "svg" => "png", // SVG gets rasterized → PNG by default
-        other => other,
-    };
-
-    let output_path = input_path.with_file_name(format!("{stem}_resized.{ext}"));
+    // Normalize extension for output (SVG gets rasterized → PNG by default)
+    let ext = helpers::output_ext(&input_ext);
+    let output_path = helpers::suffixed_path(input_path, &ext, "resized");
 
     // SVG input was already rasterized above; for other formats, save with optimization.
     helpers::save_with_quality(&resized, &output_path, None)?;
@@ -63,7 +52,7 @@ pub fn resize(input: &str, dimensions: &str) -> Result<(), Box<dyn std::error::E
         0.0
     };
 
-    let fmt_name = helpers::format_name(ext);
+    let fmt_name = helpers::format_name(&ext);
 
     println!(
         "Resized {fmt_name} {}x{} → {width}x{height} ({}B → {}B, {pct:.1}%): {}",

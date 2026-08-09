@@ -1,6 +1,6 @@
 use std::ffi::OsStr;
 use std::fs::File;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use image::codecs::jpeg::JpegEncoder;
 use image::{DynamicImage, ExtendedColorType, RgbaImage};
@@ -64,6 +64,48 @@ fn normalize(s: &str) -> String {
 /// Check whether two extensions represent the same image format.
 pub fn same_format(a: &str, b: &str) -> bool {
     normalize(a) == normalize(b)
+}
+
+/// Normalize an input extension to the canonical output extension.
+/// `jpeg` → `jpg`, `tif` → `tiff`, and `svg` (vector) → `png` (raster).
+pub fn output_ext(input_ext: &str) -> String {
+    match input_ext.to_lowercase().as_str() {
+        "jpeg" => "jpg".to_string(),
+        "tif" => "tiff".to_string(),
+        "svg" => "png".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Build a sibling output path like `<stem>_<suffix>.<ext>` next to `input`.
+pub fn suffixed_path(input: &Path, ext: &str, suffix: &str) -> PathBuf {
+    let stem = input
+        .file_stem()
+        .and_then(OsStr::to_str)
+        .unwrap_or("output");
+    input.with_file_name(format!("{stem}_{suffix}.{ext}"))
+}
+
+/// Standard validation + load for image utils.
+/// Returns the input path, the decoded image, and the lowercase extension.
+pub fn load_validated(
+    input: &str,
+) -> Result<(std::path::PathBuf, DynamicImage, String), Box<dyn std::error::Error>> {
+    let input_path = Path::new(input);
+    if !input_path.exists() {
+        return Err(format!("Input file not found: {input}").into());
+    }
+    let ext = input_path
+        .extension()
+        .and_then(OsStr::to_str)
+        .map(|e| e.to_lowercase())
+        .unwrap_or_default();
+    if !is_supported_input(&ext) {
+        let supported = INPUT_FORMATS.join(", ");
+        return Err(format!("Unsupported format: '.{ext}'. Supported: {supported}").into());
+    }
+    let img = load_image(input_path)?;
+    Ok((input_path.to_path_buf(), img, ext))
 }
 
 /// Load an image from any supported format, including SVG (rendered via resvg).

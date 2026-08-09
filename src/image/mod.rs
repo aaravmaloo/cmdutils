@@ -1,10 +1,21 @@
+pub mod batch;
 pub mod compress;
 pub mod convert;
+pub mod crop;
+pub mod grayscale;
 pub mod helpers;
 pub mod metadata;
 pub mod resize;
+pub mod rotate;
+pub mod strip;
+pub mod watermark;
 
 pub use compress::compress;
 pub use convert::convert;
+pub use crop::crop;
+pub use grayscale::grayscale;
 pub use metadata::metadata;
 pub use resize::resize;
+pub use rotate::rotate;
+pub use strip::strip;
+pub use watermark::watermark;
