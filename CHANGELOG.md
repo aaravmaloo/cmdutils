@@ -1,68 +1,57 @@
-<h1 align="center">cmdutils Changelog</h1>
+# cmdutils Changelog
 
-<p align="center"><strong>Documenting every change</strong></p>
+## v0.0.3 - Text Subnet & Image Upgrades
 
-----
+The `text` subnet is here, along with a few new image tools and glob support
+across the whole `image` subnet.
 
-## v0.0.3 -> Text Subnet & Image Upgrades
+**New: the text subnet**
 
-### text subnet — new utils
-- `count` counts lines, words, characters, and bytes of a file or stdin
-  (wc-style, with `-w`/`-l`/`-m`/`-c` flags)
-- `case` converts text between upper, lower, title, snake, kebab, camel,
-  pascal, and constant letter cases
-- `replace` replaces all occurrences of a string, with in-place (`-i`) and
-  output-file (`-o`) modes
-- `base64` encodes and decodes base64 data from a file or stdin
-- `checksum` computes md5, sha256, or sha512 hashes of a file or stdin
+- `count` - wc-style line, word, character, and byte counting for a file or
+  stdin. Use `-w`, `-l`, `-m`, or `-c` to narrow it down to just what you
+  need.
+- `case` - convert text between upper, lower, title, snake, kebab, camel,
+  pascal, and constant case.
+- `replace` - replace every occurrence of a string, either in place (`-i`)
+  or written out to a new file (`-o`).
+- `base64` - encode or decode base64 data, from a file or stdin.
+- `checksum` - md5, sha256, or sha512 hash of a file or stdin.
 
-### image subnet — new utils
-- `crop` crops an image to a `WxH+X+Y` region with bounds validation
-- `rotate` rotates an image clockwise in 90° steps
-- `grayscale` converts an image to grayscale (Rec. 601 luma)
-- `watermark` overlays semi-transparent text on an image using a system font,
-  a bundled fallback font, or a custom `--font`, with `--color`, `--opacity`,
-  `--position`, and `--size`
-- `watermark` falls back to a bundled Roboto font when no system font is
-  installed, so it works on font-less systems (e.g. minimal CI containers)
-- `strip` removes all embedded metadata (EXIF, comments) from an image
+**New: image utils**
 
-### image subnet — batch & glob processing
-- All image utils now accept glob patterns (e.g. `*.png`, `photos/*.jpg`)
-- Multiple matches are processed in parallel with bounded concurrency and
-  per-file error reporting
+- `crop` - cut an image down to a `WxH+X+Y` region, with bounds checking so
+  you can't crop past the edge.
+- `rotate` - rotate clockwise in 90 degree steps.
+- `grayscale` - convert to grayscale using Rec. 601 luma weights.
+- `watermark` - overlay semi-transparent text with configurable color,
+  opacity, position, and font size. It uses a system font when one is
+  available, a bundled Roboto otherwise, or any TTF/OTF you pass with
+  `--font`.
+- `strip` - remove all embedded metadata (EXIF, comments, etc.) from an
+  image.
 
-  TL;DR: v0.0.3 introduces the `text` subnet, adds five new `image` utils
-  (`crop`, `rotate`, `grayscale`, `watermark`, `strip`), and brings glob
-  patterns with parallel processing to the entire `image` subnet
+**Glob patterns and parallel processing**
 
----
+All image utils accept glob patterns now (`*.png`, `photos/*.jpg`), process
+the matching files in parallel, and report errors per file instead of
+stopping at the first bad one.
 
-## v0.0.2 -> Multi-format Support & Metadata
+## v0.0.2 - Multi-format Support & Metadata
 
-### image subnet — expanded format support
-- All three image utils (`convert`, `compress`, `resize`) now support **all** image
-  formats that the `image` crate can decode/encode: PNG, JPEG, WebP, BMP, GIF,
-  ICO, TIFF, AVIF, PNM, QOI, TGA, OpenEXR, Farbfeld, DDS, HDR
-- **SVG** input is now supported (rasterized via resvg) for `convert` and `resize`
-- `convert` can now convert between any two supported formats (not just PNG ↔ JPEG)
-- `compress` added WebP support (lossless in `image` 0.25) and format-agnostic
-  re-encoding for all other formats
-- `resize` now preserves the original format on output instead of always PNG/JPEG
+- `convert`, `compress`, and `resize` now work with basically every format
+  the `image` crate supports: PNG, JPEG, WebP, BMP, GIF, ICO, TIFF, AVIF,
+  PNM, QOI, TGA, OpenEXR, Farbfeld, DDS, and HDR.
+- SVG input is supported for `convert` and `resize` (rasterized with resvg).
+- `convert` can now convert between any two formats, not just PNG and JPEG.
+- `compress` gained WebP support (lossless, since `image` 0.25 doesn't do
+  lossy WebP yet) and can re-encode any other format it's given.
+- `resize` keeps the original format on output instead of always writing
+  PNG or JPEG.
+- New `metadata` util that prints file info, dimensions, color type, and
+  EXIF data (parsed with `kamadak-exif`), and can write a formatted A4 PDF
+  report via `--report`.
 
-### image subnet — new `metadata` util
-- Extracts and displays image metadata: file info, dimensions, color type, EXIF
-- Parses EXIF data from JPEG, TIFF, and WebP files using `kamadak-exif`
-- Supports `--report <path>` flag to generate a formatted A4 PDF report via `printpdf`
-- Works with all supported input formats including SVG
+## v0.0.1 - Initial Release
 
----
-
-## v0.0.1 -> Initial Release
-- Created CLI structure
-- Added the `image` subnet
-- Create `compress` util under `image` subnet
-- Create `convert` util under `image` subnet
-- Create `resize` util under `image` subnet
-
-  TL;DR: This release is the first release of `cmdutils` and aims to introduce basic `image` utils
+First release. Sets up the CLI structure with the `image` subnet and three
+utils: `convert`, `compress`, and `resize`.
