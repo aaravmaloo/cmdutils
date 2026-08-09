@@ -5,7 +5,13 @@ use std::io::Write;
 /// `None` or `"-"`.
 pub fn read_input(input: Option<&str>) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     match input {
-        Some(path) if path != "-" => Ok(std::fs::read(path)?),
+        Some(path) if path != "-" => std::fs::read(path).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                format!("Input file not found: {path}").into()
+            } else {
+                Box::new(e) as Box<dyn std::error::Error>
+            }
+        }),
         _ => {
             let mut buf = Vec::new();
             std::io::stdin().lock().read_to_end(&mut buf)?;
